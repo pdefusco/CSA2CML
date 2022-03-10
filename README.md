@@ -65,15 +65,15 @@ Navigate to the Data Hub Clusters page from the CDP home page, then open the CSA
 
 And click on the Streaming SQL Console icon to open SQL Stream Builder
 
-![alt text](docs/images/10datahub_ssb.png)
+![alt text](docs/images/10_datahub_ssb.png)
 
 SQL Stream Builder is a service to create queries on streams of data through SQL. It is part of Cloudera Streaming Analytics and is available both in Cloudera Private and Public Cloud.
 
 Recommendation: for more information on this, please visit the following links:
 
-SSB Documentation
-SSB Short Intro video
-SSB Webinar
+* SSB Documentation
+* SSB Short Intro video
+* SSB Webinar
 
 Next, we will create a Flink table from the SQL Console and populate it with fake data with Flink-Faker.
 
