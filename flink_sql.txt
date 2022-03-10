@@ -1,0 +1,15 @@
+CREATE TEMPORARY TABLE geyser_ssb (
+  `duration` DECIMAL,
+  `waiting` INT, 
+  `kind` STRING, 
+  `timestamp` TIMESTAMP(3)
+) WITH (
+  'connector' = 'faker', 
+  'fields.duration.expression' = '#{number.numberBetween ''1'',''5''}',
+  'fields.waiting.expression' = '#{number.numberBetween ''0'',''100''}',
+  'fields.kind.expression' = '#{regexify ''(long|short){1}''}', 
+  'fields.timestamp.expression' = '#{date.past ''2'',''SECONDS''}'
+);
+
+
+SELECT * FROM geyser_ssb;  
