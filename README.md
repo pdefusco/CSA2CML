@@ -1,4 +1,4 @@
-# SSB2CML Demo
+# CSA2CML Demo
 
 
 This demo shows how you can create a real time dashboard in the Cloudera Data Platform. In order to execute it you need the following prerequisites:
@@ -7,6 +7,12 @@ This demo shows how you can create a real time dashboard in the Cloudera Data Pl
 * A Cloudera Streaming Analytics (CSA) DataHub with SQL Stream Builder
 * CDP Data Lake Permissions including Ranger and proper ID Broker Mappings 
 
+Project Index
+
+1. Deploy Streamlit AMP in CML
+2. Create a streaming table in SQL Stream Builder
+3. Modify your dashboard to consume real time data from SSB 
+4. Familiarize yourself with the Matrix Profile algorithm and embed it in the dashboard
 
 
 ## Part 1 - Deploy Streamlit AMP
@@ -82,7 +88,7 @@ Please navigate to the Console -> SQL tab and select “Templates” -> “Faker
 ![alt text](docs/images/11_sql_console_faker1.png)
 
 To create the Flink table, replace the auto-populated SQL syntax with the following SQL DDL:
-
+```
 CREATE TEMPORARY TABLE geyser_ssb (
   `duration` DECIMAL,
   `waiting` INT, 
@@ -95,7 +101,7 @@ CREATE TEMPORARY TABLE geyser_ssb (
   'fields.kind.expression' = '#{regexify ''(long|short){1}''}', 
   'fields.timestamp.expression' = '#{date.past ''2'',''SECONDS''}'
 );
-
+```
 ![alt text](docs/images/12_geyser_ddl.png)
 
 Submit the Flink Job by clicking on the “Execute” button on the right hand side of the screen. Please validate that the table has been created by checking in the Logs tab below. 
@@ -103,9 +109,9 @@ Submit the Flink Job by clicking on the “Execute” button on the right hand s
 Note you have created a table with the same attributes that were present in the geyser.csv file we inspected in CML, plus a timestamp field. 
 
 Next, we will create a Materialized View. Replace the SQL syntax in the console with the following query. Do not submit the job.
-
+```
 SELECT * FROM geyser_ssb;  
-
+```
 Leave the syntax unchanged and open the “Materialized View” tab:
 
 ![alt text](docs/images/13_materialized_view1.png)
@@ -149,12 +155,12 @@ Next, navigate to the project home folder by clicking on “Overview” and open
 ![alt text](docs/images/18_remove_app.png)
 
 Do not remove the current file contents. Rather, move the cursor to line 3 and add the following entries. Please make sure you enter each entry in a single line.
-
+```
 pandas
 streamlit-autorefresh
 numpy
 requests-kerberos
-
+```
 ![alt text](docs/images/19_modify_reqs1.png)
 
 Navigate to the Jobs tab from the left side panel. Notice the “Install Dependencies” job has already run once during the AMP build. You can rerun the job by simply clicking the “Run” button on the right side. This will update the CML project dependencies with the new additions.
@@ -191,6 +197,60 @@ Notice that now both the table with summary statistics and the jointplot are upd
 Obviously this should be used carefully as we are effectively reloading the entire dataset (4 attributes x 300 rows ca.) into the container every second.  
 
 ![alt text](docs/images/24_final_app_screenshot.png)
+
+
+
+## Part 4 -  Familiarize yourself with the Matrix Profile algorithm and embed it in the dashboard 
+
+As shown in part 3, go to the Applications tab in CML and stop the Streamlit application you created.
+
+Edit the requirements.txt file by adding the “stumpy” library at line 7. Your requirements.txt file should include the following entries (make sure each is on a separate line):
+```
+seaborn==0.11.1
+streamlit==0.78.0
+pandas
+streamlit-autorefresh
+numpy
+Requests-kerberos
+stumpy
+```
+Open the Jobs tab and rerun the “Install dependencies” job.
+
+Next, start a CML Session with the following mandatory settings:
+```
+Editor: JupyterLab
+Kernel: Python 3.7
+Edition: Standard
+Resource Profile: 2 vCPU / 4 GiB Memory +
+```
+In your JupyterLab environment, open the “matrixProfileQuickstart.ipynb” notebook and run each cell by pressing “Shift + Enter” on your keyboard. 
+
+![alt text](docs/images/25_JN_screenshot.png)
+
+The notebook is designed to be a crash course to the Matrix Profile and the Stumpy library. If you are curious to dive deeper, please visit any of the following resources:
+
+* Intro to Matrix Profile in the Stumpy Docs
+* Matrix Profile Foundation homepage
+* A quick and to the point blog article
+
+Finally, open the app.py file and replace all its contents with the following code. Notice you are using Stumpy at the bottom to render two diagrams showing insights provided by the Matrix Profile algorithm. 
+
+A copy of the final script is stored in this Github repository in the code folder. 
+
+You are now ready to redeploy the CML Application with app.py as your base script. A similar Resource Profile as shown in part 3 is recommended i.e. at least 4 vCPU / 8 GiB Memory +
+
+![alt text](docs/images/26_streamlit_mp1.png)
+
+![alt text](docs/images/27_streamlit_mp2.png)
+
+
+
+## Project Status
+
+As of 3/10 the project pings a SSB materialized view executing a "select *" statment and uses the batch version of Stumpy's matrix profile algorithm. 
+
+In a future iteration the dashboard will only query a subset of the data from SSB and it will use the incremental version of Stumpy's matrix profile algorithm.
+
 
 
 

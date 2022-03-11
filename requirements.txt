@@ -4,3 +4,4 @@ pandas
 streamlit-autorefresh
 numpy
 requests-kerberos
+stumpy
