@@ -244,6 +244,12 @@ You are now ready to redeploy the CML Application with app.py as your base scrip
 ![alt text](docs/images/27_streamlit_mp2.png)
 
 
+## Next Steps
+
+Matrix Profile is not the only algorithm you can use for Anomaly Detection with Flink:
+
+* You can follow the steps outlined in [this article](https://community.cloudera.com/t5/Community-Articles/Flink-SSB-Credit-Card-Fraud-Detection-Demo/ta-p/334792) to flag anomalies directly in Flink based on geographic distance. Credits to Sunile Manjee, Principal Solutions Engineer at Cloudera.  
+* You can try using the up and coming Flink based ML libraries. For example, you can prototype a Tensorflow or PyTorch model in CML and deploy it in Flink using [dl-on-flink](https://github.com/flink-extended/dl-on-flink) 
 
 ## Project Status
 
