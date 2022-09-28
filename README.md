@@ -5,13 +5,13 @@ This demo shows how you can create a real time dashboard in the Cloudera Data Pl
 
 * A Cloudera Machine Learning (CML) Workspace
 * A Cloudera Streaming Analytics (CSA) DataHub with SQL Stream Builder
-* CDP Data Lake Permissions including Ranger and proper ID Broker Mappings 
+* CDP Data Lake Permissions including Ranger and proper ID Broker Mappings
 
 Project Index
 
 1. Deploy Streamlit AMP in CML
 2. Create a streaming table in SQL Stream Builder
-3. Modify your dashboard to consume real time data from SSB 
+3. Modify your dashboard to consume real time data from SSB
 4. Familiarize yourself with the Matrix Profile algorithm and embed it in the dashboard
 
 
@@ -25,13 +25,13 @@ A series of AMPs will be loaded in the middle of the screen. Select the Streamli
 
 ![alt text](docs/images/2_amps2.png)
 
-Click the “Configure Project” button. A window with deployment options will appear. You can leave default settings (default AMP settings are normally vetted by the Fast Forward Labs team who are in charge of AMPs). 
+Click the “Configure Project” button. A window with deployment options will appear. You can leave default settings (default AMP settings are normally vetted by the Fast Forward Labs team who are in charge of AMPs).
 
-If it is enabled, you can optionally disable the Spark option as it is not needed. 
+If it is enabled, you can optionally disable the Spark option as it is not needed.
 
 ![alt text](docs/images/3_amps3.png)
 
-Next, click on the “Launch Project” button at the bottom right. CML will automatically build the AMP project for you. This build should take 5-10 minutes at most. 
+Next, click on the “Launch Project” button at the bottom right. CML will automatically build the AMP project for you. This build should take 5-10 minutes at most.
 
 Please feel free to stretch your legs and grab a coffee!
 
@@ -41,7 +41,7 @@ You can now access the AMP by going back to the Projects homepage and opening th
 
 ![alt text](docs/images/5_project.png)
 
-Notice the README file is automatically loaded for you. This contains useful information about the AMP. 
+Notice the README file is automatically loaded for you. This contains useful information about the AMP.
 
 Next, familiarize yourself with the Streamlit application. Open “Applications” on the left side panel and then on the “Streamlit App” box
 
@@ -51,15 +51,17 @@ Your browser will open a new window with the Streamlit dashboard
 
 ![alt text](docs/images/7_streamlit_app2.png)
 
-So how does this work? The actual code for the Streamlit dashboard is in the app.py file located in the project home folder. The CML Applications feature loads the script in a container and provides an endpoint for serving the app. 
+So how does this work? The actual code for the Streamlit dashboard is in the app.py file located in the project home folder. The CML Applications feature loads the script in a container and provides an endpoint for serving the app.
 
-The data rendered by the dashboard is stored in the seaborn-data folder in the project home folder. Notice this is a small static csv file. The data is loaded in the application once and it does not mutate. 
+Notice that the base script used by the app is actually code/launch_app.py. The script references the code in app.py. Separating the code managing the deployment from the app is a CML best practice that allows you to better manage and version your apps in a CICD fashion, but it is not mandatory.
 
-Author recommendation: feel free to click on the app.py script to see the application code, or the heyser.csv file located in the “seaborn=data” folder to inspect the data. 
+The data rendered by the dashboard is stored in the seaborn-data folder in the project home folder. Notice this is a small static csv file. The data is loaded in the application once and it does not mutate.
+
+Author recommendation: feel free to click on the app.py script to see the application code, or the heyser.csv file located in the “seaborn=data” folder to inspect the data.
 
 ![alt text](docs/images/8_streamlit_app3.png)
 
-Next, we will create a Flink table with SQL Stream Builder to create some more fake data for the CML Application. The goal is to have a dashboard showing insights in real time. 
+Next, we will create a Flink table with SQL Stream Builder to create some more fake data for the CML Application. The goal is to have a dashboard showing insights in real time.
 
 
 
@@ -91,22 +93,22 @@ To create the Flink table, replace the auto-populated SQL syntax with the follow
 ```
 CREATE TEMPORARY TABLE geyser_ssb (
   `duration` DECIMAL,
-  `waiting` INT, 
-  `kind` STRING, 
+  `waiting` INT,
+  `kind` STRING,
   `timestamp` TIMESTAMP(3)
 ) WITH (
-  'connector' = 'faker', 
+  'connector' = 'faker',
   'fields.duration.expression' = '#{number.numberBetween ''1'',''5''}',
   'fields.waiting.expression' = '#{number.numberBetween ''0'',''100''}',
-  'fields.kind.expression' = '#{regexify ''(long|short){1}''}', 
+  'fields.kind.expression' = '#{regexify ''(long|short){1}''}',
   'fields.timestamp.expression' = '#{date.past ''2'',''SECONDS''}'
 );
 ```
 ![alt text](docs/images/12_geyser_ddl.png)
 
-Submit the Flink Job by clicking on the “Execute” button on the right hand side of the screen. Please validate that the table has been created by checking in the Logs tab below. 
+Submit the Flink Job by clicking on the “Execute” button on the right hand side of the screen. Please validate that the table has been created by checking in the Logs tab below.
 
-Note you have created a table with the same attributes that were present in the geyser.csv file we inspected in CML, plus a timestamp field. 
+Note you have created a table with the same attributes that were present in the geyser.csv file we inspected in CML, plus a timestamp field.
 
 Next, we will create a Materialized View. Replace the SQL syntax in the console with the following query. Do not submit the job.
 ```
@@ -116,23 +118,23 @@ Leave the syntax unchanged and open the “Materialized View” tab:
 
 ![alt text](docs/images/13_materialized_view1.png)
 
-After a few seconds the Configuration tab will automatically detect the query and inspect potential primary keys. 
+After a few seconds the Configuration tab will automatically detect the query and inspect potential primary keys.
 
-You can ignore any initial messages. After a few seconds you will be able to change the “Materialized View” setting from “Disabled” to “Enabled and select “timestamp” as the primary key. 
+You can ignore any initial messages. After a few seconds you will be able to change the “Materialized View” setting from “Disabled” to “Enabled and select “timestamp” as the primary key.
 
 The remaining options can be left to their default values.  
 
 ![alt text](docs/images/13_materialized_view1.png)
 
-The next screen displays a set of configurations for the View. Please name the URL Pattern as shown with “SSB2CML” and make sure to “Select All” fields. 
+The next screen displays a set of configurations for the View. Please name the URL Pattern as shown with “SSB2CML” and make sure to “Select All” fields.
 
 ![alt text](docs/images/14_materialized_view2.png)
 
-Save the configuration and patiently wait a moment for the URL Pattern tab to be populated with the endpoint at the bottom of the screen. 
+Save the configuration and patiently wait a moment for the URL Pattern tab to be populated with the endpoint at the bottom of the screen.
 
 ![alt text](docs/images/15_materialized_view3.png)
 
-Copy the URL to your clipboard. We will use it in CML. 
+Copy the URL to your clipboard. We will use it in CML.
 
 Next, do not navigate away from the console. Go back to the “SQL” tab and execute the job.
 
@@ -142,7 +144,7 @@ After a few moments the job will start and you will see live updates in the Resu
 
 
 
-## Part 3 - Modify your dashboard to consume real time data from SSB 
+## Part 3 - Modify your dashboard to consume real time data from SSB
 
 Navigate back to the CML Workspace and open the CML Project where you deployed your dashboard i.e. “Streamlit - yourusername”.
 
@@ -150,7 +152,7 @@ Navigate to the Applications tab and remove the current application.
 
 ![alt text](docs/images/17_materialized_view5.png)
 
-Next, navigate to the project home folder by clicking on “Overview” and open the requirements.txt file. Click on “Open in Workbench” at the top right to edit it. 
+Next, navigate to the project home folder by clicking on “Overview” and open the requirements.txt file. Click on “Open in Workbench” at the top right to edit it.
 
 ![alt text](docs/images/18_remove_app.png)
 
@@ -164,12 +166,12 @@ requests-kerberos
 ![alt text](docs/images/19_modify_reqs1.png)
 
 Navigate to the Jobs tab from the left side panel. Notice the “Install Dependencies” job has already run once during the AMP build. You can rerun the job by simply clicking the “Run” button on the right side. This will update the CML project dependencies with the new additions.
- 
+
 ![alt text](docs/images/20_modify_reqs2.png)
 
-Next, navigate to the “Project Settings” tab on the left side panel and then open the “Advanced” tab. Create a new environment variable with the SSB Materialized View url you copied to the clipboard. 
+Next, navigate to the “Project Settings” tab on the left side panel and then open the “Advanced” tab. Create a new environment variable with the SSB Materialized View url you copied to the clipboard.
 
-If you lost the URL value, you can navigate back to SSB and access it from the Materialized Views tab. 
+If you lost the URL value, you can navigate back to SSB and access it from the Materialized Views tab.
 
 Name the variable “SSB_MV” by entering “SSB_MV” on the left side and paste the SSB url you copied to the clipboard on the right side as shown below.
 
@@ -186,13 +188,13 @@ Subdomain: StreamingApps
 Script: cml/launch_app.py
 Resource Profile: at least 4vCPU / 8 GiB Memory recommended
 
-No other values require modification. If you can’t find a resource profile with 4 vCPU / 8 GiB Memory, you can add it at the workspace level by navigating to “Site Administration” -> “Runtime/Engine” -> “Resource Profiles”. You will need Administrator rights to the workspace in order to do that. 
+No other values require modification. If you can’t find a resource profile with 4 vCPU / 8 GiB Memory, you can add it at the workspace level by navigating to “Site Administration” -> “Runtime/Engine” -> “Resource Profiles”. You will need Administrator rights to the workspace in order to do that.
 
 ![alt text](docs/images/23_final_app_settings.png)
 
-Click create and then wait for the Application to launch. This might take up to a minute or two but shouldn’t take longer than that. 
+Click create and then wait for the Application to launch. This might take up to a minute or two but shouldn’t take longer than that.
 
-Notice that now both the table with summary statistics and the jointplot are updating in realtime. Streamlit has a built-in method named “st_autorefresh” that allows you to set update frequency. In app.py this has been added at line 57 and update frequency has been set at once per second. 
+Notice that now both the table with summary statistics and the jointplot are updating in realtime. Streamlit has a built-in method named “st_autorefresh” that allows you to set update frequency. In app.py this has been added at line 57 and update frequency has been set at once per second.
 
 Obviously this should be used carefully as we are effectively reloading the entire dataset (4 attributes x 300 rows ca.) into the container every second.  
 
@@ -200,7 +202,7 @@ Obviously this should be used carefully as we are effectively reloading the enti
 
 
 
-## Part 4 -  Familiarize yourself with the Matrix Profile algorithm and embed it in the dashboard 
+## Part 4 -  Familiarize yourself with the Matrix Profile algorithm and embed it in the dashboard
 
 As shown in part 3, go to the Applications tab in CML and stop the Streamlit application you created.
 
@@ -223,7 +225,7 @@ Kernel: Python 3.7
 Edition: Standard
 Resource Profile: 2 vCPU / 4 GiB Memory +
 ```
-In your JupyterLab environment, open the “matrixProfileQuickstart.ipynb” notebook and run each cell by pressing “Shift + Enter” on your keyboard. 
+In your JupyterLab environment, open the “matrixProfileQuickstart.ipynb” notebook and run each cell by pressing “Shift + Enter” on your keyboard.
 
 ![alt text](docs/images/25_JN_screenshot.png)
 
@@ -233,11 +235,13 @@ The notebook is designed to be a crash course to the Matrix Profile and the Stum
 * Matrix Profile Foundation homepage
 * A quick and to the point blog article
 
-Finally, open the app.py file and replace all its contents with the following code. Notice you are using Stumpy at the bottom to render two diagrams showing insights provided by the Matrix Profile algorithm. 
+Finally, open the app.py file and replace all its contents with the following code. Notice you are using Stumpy at the bottom to render two diagrams showing insights provided by the Matrix Profile algorithm.
 
-A copy of the final script is stored in this Github repository in the code folder. 
+A copy of the final script is stored in this Github repository in the code folder.
 
-You are now ready to redeploy the CML Application with app.py as your base script. A similar Resource Profile as shown in part 3 is recommended i.e. at least 4 vCPU / 8 GiB Memory +
+You are now ready to redeploy the CML Application. In the CML Applications deployment form, please ensure to select code/launch_app.py as the script used for the app. The code is in app.py but the app is actually deployed via launch_app.py.
+
+A similar Resource Profile as shown in part 3 is recommended i.e. at least 4 vCPU / 8 GiB Memory +
 
 ![alt text](docs/images/26_streamlit_mp1.png)
 
@@ -249,16 +253,10 @@ You are now ready to redeploy the CML Application with app.py as your base scrip
 Matrix Profile is not the only algorithm you can use for Anomaly Detection with Flink:
 
 * You can follow the steps outlined in [this article](https://community.cloudera.com/t5/Community-Articles/Flink-SSB-Credit-Card-Fraud-Detection-Demo/ta-p/334792) to flag anomalies directly in Flink based on geographic distance. Credits to Sunile Manjee, Principal Solutions Engineer at Cloudera.  
-* You can try using the up and coming Flink based ML libraries. For example, you can prototype a Tensorflow or PyTorch model in CML and deploy it in Flink using [dl-on-flink](https://github.com/flink-extended/dl-on-flink) 
+* You can try using the up and coming Flink based ML libraries. For example, you can prototype a Tensorflow or PyTorch model in CML and deploy it in Flink using [dl-on-flink](https://github.com/flink-extended/dl-on-flink)
 
 ## Project Status
 
-As of 3/10 the project pings a SSB materialized view executing a "select *" statment and uses the batch version of Stumpy's matrix profile algorithm. 
+As of 3/10 the project pings a SSB materialized view executing a "select *" statment and uses the batch version of Stumpy's matrix profile algorithm.
 
 In a future iteration the dashboard will only query a subset of the data from SSB and it will use the incremental version of Stumpy's matrix profile algorithm.
-
-
-
-
-
-
