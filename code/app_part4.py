@@ -55,7 +55,7 @@ st.title("Old Faithful eruptions")
 st.header('This dashboard is automatically updated every 3 seconds. You can customize update frequency.')
 
 a = os.environ["SSB_MV"].replace("gateway", "manager0").split("/")
-ssb_endpoint = "https://"+a[2]+":18131/api/v1/query/"+a[-2]+"/"+a[-1]
+ssb_endpoint = "https://"+a[2]+"/api/v1/query/"+a[-2]+"/"+a[-1]
 
 #geyser = sns.load_dataset("geyser")
 # update every 5 seconds
