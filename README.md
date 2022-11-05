@@ -64,7 +64,6 @@ Author recommendation: feel free to click on the app.py script to see the applic
 Next, we will create a Flink table with SQL Stream Builder to create some more fake data for the CML Application. The goal is to have a dashboard showing insights in real time.
 
 
-
 ## Part 2 - Create a streaming table in SQL Stream Builder
 
 Navigate to the Data Hub Clusters page from the CDP home page, then open the CSA cluster
@@ -90,6 +89,7 @@ Please navigate to the Console -> SQL tab and select “Templates” -> “Faker
 ![alt text](docs/images/11_sql_console_faker1.png)
 
 To create the Flink table, replace the auto-populated SQL syntax with the following SQL DDL:
+
 ```
 CREATE TEMPORARY TABLE geyser_ssb (
   `duration` DECIMAL,
@@ -104,23 +104,26 @@ CREATE TEMPORARY TABLE geyser_ssb (
   'fields.timestamp.expression' = '#{date.past ''2'',''SECONDS''}'
 );
 ```
+
 ![alt text](docs/images/12_geyser_ddl.png)
 
 Submit the Flink Job by clicking on the “Execute” button on the right hand side of the screen. Please validate that the table has been created by checking in the Logs tab below.
 
-Note you have created a table with the same attributes that were present in the geyser.csv file we inspected in CML, plus a timestamp field.
+Note you have created a table with the same attributes that were present in the "geyser.csv" file we inspected in CML, plus a timestamp field.
 
 Next, we will create a Materialized View. Replace the SQL syntax in the console with the following query. Do not submit the job.
+
 ```
 SELECT * FROM geyser_ssb;  
 ```
+
 Leave the syntax unchanged and open the “Materialized View” tab:
 
 ![alt text](docs/images/13_materialized_view1.png)
 
 After a few seconds the Configuration tab will automatically detect the query and inspect potential primary keys.
 
-You can ignore any initial messages. After a few seconds you will be able to change the “Materialized View” setting from “Disabled” to “Enabled and select “timestamp” as the primary key.
+You can ignore any initial messages. After a few seconds you will be able to change the "Materialized View" setting from "Disabled" to "Enabled" and select "timestamp" as the primary key.
 
 The remaining options can be left to their default values.  
 
@@ -136,12 +139,11 @@ Save the configuration and patiently wait a moment for the URL Pattern tab to be
 
 Copy the URL to your clipboard. We will use it in CML.
 
-Next, do not navigate away from the console. Go back to the “SQL” tab and execute the job.
+Next, do not navigate away from the console. Go back to the "SQL" tab and execute the job.
 
 ![alt text](docs/images/16_materialized_view4.png)
 
 After a few moments the job will start and you will see live updates in the Results tab. Your Flink job is running and all with the ease of a SQL query!
-
 
 
 ## Part 3 - Modify your dashboard to consume real time data from SSB
@@ -157,29 +159,96 @@ Next, navigate to the project home folder by clicking on “Overview” and open
 ![alt text](docs/images/18_remove_app.png)
 
 Do not remove the current file contents. Rather, move the cursor to line 3 and add the following entries. Please make sure you enter each entry in a single line.
+
 ```
 pandas
 streamlit-autorefresh
 numpy
 requests-kerberos
 ```
+
 ![alt text](docs/images/19_modify_reqs1.png)
 
-Navigate to the Jobs tab from the left side panel. Notice the “Install Dependencies” job has already run once during the AMP build. You can rerun the job by simply clicking the “Run” button on the right side. This will update the CML project dependencies with the new additions.
+Launch a new CML session with "Workbench Editor". Open the terminal window and reinstall the requirements with submitting the following command:
+
+```
+pip3 install -r requirements.txt
+```
 
 ![alt text](docs/images/20_modify_reqs2.png)
 
-Next, navigate to the “Project Settings” tab on the left side panel and then open the “Advanced” tab. Create a new environment variable with the SSB Materialized View url you copied to the clipboard.
+Next, navigate to the "Project Settings" tab on the left side panel and then open the "Advanced" tab. Create a new environment variable with the SSB Materialized View url you copied to the clipboard.
 
 If you lost the URL value, you can navigate back to SSB and access it from the Materialized Views tab.
 
-Name the variable “SSB_MV” by entering “SSB_MV” on the left side and paste the SSB url you copied to the clipboard on the right side as shown below.
+Name the variable "SSB_MV" by entering "SSB_MV" on the left side and paste the SSB url you copied to the clipboard on the right side as shown below.
 
 ![alt text](docs/images/21_run_job.png)
 
+![alt text](docs/images/22_ssb_mv_envvar.png)
+
 One last step: navigate back to the Overview tab and open the app.py file. Replace its contents with the following (a copy is stored in app.py in this repository)
 
-![alt text](docs/images/22_ssb_mv_envvar.png)
+```
+import seaborn as sns
+import streamlit as st
+import pandas as pd
+import json
+import requests
+from streamlit_autorefresh import st_autorefresh
+from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+import os
+
+st.title("Old Faithful eruptions")
+
+a = os.environ["SSB_MV"].replace("gateway", "manager0").split("/")
+ssb_endpoint = "https://"+a[2]+"/api/v1/query/"+a[-2]+"/"+a[-1]
+
+#geyser = sns.load_dataset("geyser")
+# update every 5 seconds
+st_autorefresh(interval= 1 * 1000, key="dataframerefresh")
+
+def load_data(endpoint):
+  r = requests.get(endpoint, auth=HTTPKerberosAuth(mutual_authentication=OPTIONAL))
+  data = pd.DataFrame(json.loads(r.text))
+  data[['duration','waiting']] = data[['duration','waiting']].astype('int')
+  data["timestamp"] = pd.to_datetime(data["timestamp"])
+  return data
+
+geyser = load_data(ssb_endpoint)
+
+st.markdown(
+    """
+    This is a tiny app to explore the
+    [Old Faithful Geyser Data](https://www.stat.cmu.edu/~larry/all-of-statistics/=data/faithful.dat).
+    First, we can view some summary statistics.
+    The `duration` variable is the duration of an eruption in minutes,
+    and the `waiting` variable is the time between eruptions in minutes.
+    """
+)
+
+st.write(geyser.describe().T)
+
+"""
+So the mean waiting time between eruptions is around 70 minutes,
+with a mean eruption duration of three and a half minutes.
+Summary statistics can be misleading.
+Let us plot the waiting and duration variables against each other.
+
+We'll use a joint density plot, with the marginal densities for each
+variable on the corresponding axis.
+There are clearly two clusters:
+shorter eruptions with a shorter waiting time,
+and longer eruptions with a longer waiting time.
+These are labeled in our data set, so we separate the data and color by cluster.
+"""
+
+
+with sns.axes_style("white"):
+    st.pyplot(
+        sns.jointplot(data=geyser, x="waiting", y="duration", hue="kind", kind="kde")
+    )
+```
 
 You are now ready to deploy the new application with streaming data. Navigate to the Applications tab on the right side. Create a new application with the following settings:
 
@@ -194,38 +263,45 @@ No other values require modification. If you can’t find a resource profile wit
 
 Click create and then wait for the Application to launch. This might take up to a minute or two but shouldn’t take longer than that.
 
-Notice that now both the table with summary statistics and the jointplot are updating in realtime. Streamlit has a built-in method named “st_autorefresh” that allows you to set update frequency. In app.py this has been added at line 57 and update frequency has been set at once per second.
+Notice that now both the table with summary statistics and the jointplot are updating in realtime. Streamlit has a built-in method named "st_autorefresh" that allows you to set update frequency. In "app.py" this has been added at line 57 and update frequency has been set at once per second.
 
 Obviously this should be used carefully as we are effectively reloading the entire dataset (4 attributes x 300 rows ca.) into the container every second.  
 
 ![alt text](docs/images/24_final_app_screenshot.png)
 
 
-
 ## Part 4 -  Familiarize yourself with the Matrix Profile algorithm and embed it in the dashboard
 
 As shown in part 3, go to the Applications tab in CML and stop the Streamlit application you created.
 
-Edit the requirements.txt file by adding the “stumpy” library at line 7. Your requirements.txt file should include the following entries (make sure each is on a separate line):
+Edit the "requirements.txt" file by adding the "stumpy" library at line 7. Your "requirements.txt" file should include the following entries (make sure each is on a separate line):
+
 ```
 seaborn==0.11.1
 streamlit==0.78.0
 pandas
 streamlit-autorefresh
 numpy
-Requests-kerberos
+requests-kerberos
 stumpy
 ```
-Open the Jobs tab and rerun the “Install dependencies” job.
+
+Using the CML session with "Workbench Editor" you launched earlier, reopen the terminal window and reinstall the requirements with
+
+```
+pip3 install -r requirements.txt
+```
 
 Next, start a CML Session with the following mandatory settings:
+
 ```
 Editor: JupyterLab
 Kernel: Python 3.7
 Edition: Standard
 Resource Profile: 2 vCPU / 4 GiB Memory +
 ```
-In your JupyterLab environment, open the “matrixProfileQuickstart.ipynb” notebook and run each cell by pressing “Shift + Enter” on your keyboard.
+
+In your JupyterLab environment, open the "matrixProfileQuickstart.ipynb" notebook and run each cell by pressing "Shift + Enter" on your keyboard.
 
 ![alt text](docs/images/25_JN_screenshot.png)
 
@@ -235,11 +311,120 @@ The notebook is designed to be a crash course to the Matrix Profile and the Stum
 * Matrix Profile Foundation homepage
 * A quick and to the point blog article
 
-Finally, open the app.py file and replace all its contents with the following code. Notice you are using Stumpy at the bottom to render two diagrams showing insights provided by the Matrix Profile algorithm.
+Finally, open the "app.py" file and replace all its contents with the following code. Notice you are using Stumpy at the bottom to render two diagrams showing insights provided by the Matrix Profile algorithm.
+
+```
+import seaborn as sns
+import streamlit as st
+import pandas as pd
+import numpy as np
+import json
+import requests
+from streamlit_autorefresh import st_autorefresh
+from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+import os
+import stumpy
+import matplotlib.pyplot as plt
+
+st.title("Old Faithful eruptions")
+
+st.header('This dashboard is automatically updated every 3 seconds. You can customize update frequency.')
+
+a = os.environ["SSB_MV"].replace("gateway", "manager0").split("/")
+ssb_endpoint = "https://"+a[2]+"/api/v1/query/"+a[-2]+"/"+a[-1]
+
+#geyser = sns.load_dataset("geyser")
+# update every 5 seconds
+st_autorefresh(interval= 3 * 1000, key="dataframerefresh")
+
+def load_data(endpoint):
+    r = requests.get(endpoint, auth=HTTPKerberosAuth(mutual_authentication=OPTIONAL))
+    data = pd.DataFrame(json.loads(r.text))
+    data[['duration','waiting']] = data[['duration','waiting']].astype('int')
+    data["timestamp"] = pd.to_datetime(data["timestamp"])
+    data = data[:100]
+    return data
+
+geyser = load_data(ssb_endpoint)
+
+
+st.markdown(
+    """
+    This is a tiny app to explore the
+    [Old Faithful Geyser Data](https://www.stat.cmu.edu/~larry/all-of-statistics/=data/faithful.dat).
+    First, we can view some summary statistics.
+    The `duration` variable is the duration of an eruption in minutes,
+    and the `waiting` variable is the time between eruptions in minutes.
+    """
+)
+
+st.write(geyser.describe().T)
+
+"""
+So the mean waiting time between eruptions is around 70 minutes,
+with a mean eruption duration of three and a half minutes.
+Summary statistics can be misleading.
+Let us plot the waiting and duration variables against each other.
+
+We'll use a joint density plot, with the marginal densities for each
+variable on the corresponding axis.
+There are clearly two clusters:
+shorter eruptions with a shorter waiting time,
+and longer eruptions with a longer waiting time.
+These are labeled in our data set, so we separate the data and color by cluster.
+"""
+
+with sns.axes_style("white"):
+    st.pyplot(
+        sns.jointplot(data=geyser, x="waiting", y="duration", hue="kind", kind="kde")
+    )
+
+### Matrix Profile Beginning ###
+
+T_df = geyser['waiting']
+Q_df = pd.Series([12,39,45,1,9,140])
+
+distance_profile = stumpy.mass(Q_df.astype(np.float64), T_df.astype(np.float64))
+
+idx = np.argmin(distance_profile)
+
+st.header("The Matrix Profile algorithm scans the entire time series and identifies the subset that is most similar to the pattern provided")
+
+"""
+Q_df is the query pattern we provide to the algorithm. In this case it is the Pandas Series [12, 39, 45, 1, 9, 140]
+T_df is the entire time series we are streaming from SQL Stream Builder (Flink).
+"""
+
+st.header(f"The nearest neighbor to Q_df is located at index {idx} in T_df")
+
+Q_z_norm = stumpy.core.z_norm(Q_df.values)
+nn_z_norm = stumpy.core.z_norm(T_df.values[idx:idx+len(Q_df)])
+
+fig = plt.figure(figsize=(7,8))
+plt.suptitle('Comparing The Query To Its Nearest Neighbor', fontsize='15')
+plt.xlabel('Time', fontsize ='15')
+plt.ylabel('Waiting', fontsize='15')
+plt.plot(Q_z_norm, lw=2, color="C1", label="Query Subsequence, Q_df")
+plt.plot(nn_z_norm, lw=2, label="Nearest Neighbor Subsequence From T_df")
+plt.legend()
+st.pyplot(fig)
+
+st.header("The Matrix Profile algorithm scans the entire time series and identifies the subset that is most similar to the pattern provided")
+
+fig = plt.figure(figsize=(7,8))
+plt.suptitle('Geyser Dataset, T_df', fontsize='15')
+plt.xlabel('Time', fontsize ='15')
+plt.ylabel('Waiting', fontsize='15')
+plt.plot(T_df)
+ax = plt.gca()
+plt.plot(range(idx, idx+len(Q_df)), T_df.values[idx:idx+len(Q_df)], lw=2, label="Nearest Neighbor Subsequence")
+plt.legend()
+st.pyplot(fig)
+```
 
 A copy of the final script is stored in this Github repository in the code folder.
 
-You are now ready to redeploy the CML Application. In the CML Applications deployment form, please ensure to select code/launch_app.py as the script used for the app. The code is in app.py but the app is actually deployed via launch_app.py.
+You are now ready to redeploy the CML Application. In the CML Applications deployment form, please ensure to select "code/launch_app.py" as the script used for the app. The code is in "app.py" but the app is actually deployed via "launch_app.py".
 
 A similar Resource Profile as shown in part 3 is recommended i.e. at least 4 vCPU / 8 GiB Memory +
 
@@ -254,9 +439,3 @@ Matrix Profile is not the only algorithm you can use for Anomaly Detection with 
 
 * You can follow the steps outlined in [this article](https://community.cloudera.com/t5/Community-Articles/Flink-SSB-Credit-Card-Fraud-Detection-Demo/ta-p/334792) to flag anomalies directly in Flink based on geographic distance. Credits to Sunile Manjee, Principal Solutions Engineer at Cloudera.  
 * You can try using the up and coming Flink based ML libraries. For example, you can prototype a Tensorflow or PyTorch model in CML and deploy it in Flink using [dl-on-flink](https://github.com/flink-extended/dl-on-flink)
-
-## Project Status
-
-As of 3/10 the project pings a SSB materialized view executing a "select *" statment and uses the batch version of Stumpy's matrix profile algorithm.
-
-In a future iteration the dashboard will only query a subset of the data from SSB and it will use the incremental version of Stumpy's matrix profile algorithm.
